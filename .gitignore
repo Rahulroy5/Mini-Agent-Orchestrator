@@ -1,0 +1,22 @@
+# OS files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Test/type-check cache
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env

@@ -1,0 +1,20 @@
+# Environment
+.env
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store

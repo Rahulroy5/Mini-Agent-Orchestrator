@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Orchestrator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-wrap">
+          <div class="brand-icon">A</div>
+          <div class="brand-text">Agent Orchestrator</div>
+        </div>
+        <div id="llm-pill" class="status-pill offline">LLM Offline</div>
+      </header>
+
+      <section class="composer-panel">
+        <div class="suggestions">
+          <button class="chip" data-suggestion="Cancel my order #9921 and email me at user@example.com.">Cancel my order #9921 and email me at user@example.com.</button>
+          <button class="chip" data-suggestion="Cancel order #4455 and send confirmation to admin@test.com.">Cancel order #4455 and send confirmation to admin@test.com.</button>
+          <button class="chip" data-suggestion="Cancel order #1234 but do not send any email.">Cancel order #1234 but do not send any email.</button>
+        </div>
+
+        <form id="chat-form" class="composer" autocomplete="off">
+          <input
+            id="message-input"
+            class="composer-input"
+            type="text"
+            placeholder="Enter a natural language request..."
+            required
+          />
+          <button id="send-button" class="send-button" type="submit" aria-label="Send request">→</button>
+        </form>
+      </section>
+
+      <section id="feed" class="feed" aria-live="polite"></section>
+    </main>
+
+    <template id="card-template">
+      <article class="entry-card">
+        <div class="entry-header">
+          <span class="entry-id"></span>
+          <span class="entry-state">COMPLETED</span>
+        </div>
+        <p class="entry-user"></p>
+        <div class="entry-divider"></div>
+        <div class="entry-agent-label">Thinking</div>
+        <pre class="entry-thinking"></pre>
+        <div class="entry-agent-label">Plan</div>
+        <ul class="entry-plan"></ul>
+        <div class="entry-agent-label">Execution Steps</div>
+        <ul class="entry-steps"></ul>
+        <div class="entry-agent-label">Final Result</div>
+        <p class="entry-agent"></p>
+      </article>
+    </template>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

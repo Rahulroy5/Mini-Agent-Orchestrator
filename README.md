@@ -1,67 +1,178 @@
-# Mini Agent Orchestrator
+# Mini Agent Platform
 
-A lightweight, event-driven FastAPI agent that:
-- plans tool actions from natural language using `qwen3.5:2b` via Ollama,
-- executes async mock tools,
-- enforces guardrails (no email if cancellation fails).
+Production-oriented local AI orchestration platform built with FastAPI and Ollama.
 
-## Features
+This repository contains two complementary services:
 
-- Single API endpoint: `POST /agent/request`
-- Planner:
-  - Primary: local LLM call to Ollama `qwen3.5:2b`
-  - Fallback: regex parser if LLM is unavailable
-- Async tools:
-  - `cancel_order(order_id)` with simulated 20% random failure
-  - `send_email(email, message)` with 1-second async delay
-- Event-driven orchestration with event log in response
+- A workflow orchestrator that converts user intent into executable tool steps (`/agent/request`).
+- A chat + tool execution service with health checks, startup resilience, and a browser UI.
 
-## Setup
+The project demonstrates practical agent patterns: planning, guardrails, retries, dependency-aware execution, and graceful degradation when the LLM is unavailable.
 
-1. Install dependencies:
+## Why This Project
+
+Most "agent" demos stop at prompt-to-text output. This project goes further by modeling production concerns:
+
+- Structured plan generation with deterministic fallback behavior.
+- Tool dependency graph execution with early-fail guardrails.
+- Local-first LLM integration (Ollama) with retry/backoff and startup checks.
+- Observable workflows with explicit step traces and event logs.
+
+## Architecture Overview
+
+### 1) Root service: Mini Agent Orchestrator (`/app`)
+
+- Endpoint: `POST /agent/request`
+- Planner strategy:
+  - Primary: LLM-generated structured plan from Ollama (`qwen3.5:2b`)
+  - Fallback: regex-based parser when LLM output is unavailable/unparseable
+- Executor strategy:
+  - Runs tools asynchronously
+  - Enforces dependency order
+  - Stops downstream actions on failure
+- Guardrail:
+  - If cancellation fails, email is never sent
+
+### 2) Subproject: Production FastAPI orchestrator (`/mini-agent-orchestrator`)
+
+- Endpoints: `/health`, `/llm-status`, `/chat`
+- Includes:
+  - Typed schemas (Pydantic v2)
+  - Ollama service abstraction (HTTPX + retry/backoff)
+  - Startup health check hooks
+  - Static frontend for interactive testing
+  - Smart launcher script (`start.sh`) that:
+    - validates Ollama availability
+    - ensures model presence
+    - finds an available port
+    - avoids duplicate process launches
+
+## Tech Stack
+
+- Python 3.11+
+- FastAPI + Uvicorn
+- HTTPX
+- Pydantic v2
+- Ollama (`qwen3.5:2b`)
+- pytest
+- uv (in the subproject)
+
+## Repository Structure
+
+```text
+Mini-agent/
+  app/                          # Root orchestrator API
+    main.py
+    planner.py
+    orchestrator.py
+    tools.py
+    schemas.py
+
+  mini-agent-orchestrator/      # Production-style API + UI
+    app/
+      api/routes.py
+      core/config.py
+      services/
+      static/
+    tests/test_api.py
+    start.sh
+    pyproject.toml
+
+  requirements.txt
+  start.sh                      # Root convenience launcher
+```
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Ollama installed and running
+- Model available locally: `qwen3.5:2b`
+
+```bash
+ollama pull qwen3.5:2b
+```
+
+### Option A: Run the root orchestrator API
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-2. Ensure Ollama is running with model:
-
-```bash
-ollama pull qwen3.5:2b
-ollama run qwen3.5:2b
-```
-
-3. Optional environment config:
-
-```bash
-cp .env.example .env
-```
-
-4. Run API server:
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-## API Usage
+API available at `http://127.0.0.1:8000`.
 
-Request:
+### Option B: Run the production-style subproject
+
+From repository root, you can now launch directly:
+
+```bash
+bash start.sh
+```
+
+Or manually:
+
+```bash
+cd mini-agent-orchestrator
+uv sync --extra dev
+bash start.sh
+```
+
+## API Examples
+
+### Root orchestrator
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/agent/request" \
   -H "Content-Type: application/json" \
-  -d '{"query":"Cancel my order #9921 and email me the confirmation at user@example.com."}'
+  -d '{"query":"Cancel my order #9921 and email me at user@example.com"}'
 ```
 
-Response includes:
-- `status`: `success` or `failed`
-- `message`: user-facing summary
-- `plan`: generated tasks
-- `steps`: execution results
-- `events`: workflow event stream
+### Subproject APIs
 
-## Failure Guardrail
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/llm-status
 
-If `cancel_order` fails, the orchestrator returns a failed state immediately and does not execute `send_email`.
+curl -X POST "http://127.0.0.1:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Explain async IO in one sentence."}'
+```
+
+## Testing
+
+### Root project
+
+```bash
+pytest
+```
+
+### Subproject
+
+```bash
+cd mini-agent-orchestrator
+uv run pytest
+```
+
+## Engineering Highlights
+
+- Built a resilient planner-executor pipeline that combines LLM flexibility with deterministic fallback parsing.
+- Implemented failure-aware orchestration where tool dependencies are explicitly modeled and enforced.
+- Added service-level reliability patterns: retries with backoff, startup health verification, and safe shutdown.
+- Designed responses for observability with plan traces, step-level outcomes, and workflow events.
+- Structured codebase into clear boundaries: API, service layer, schemas, and tool adapters.
+
+## Future Improvements
+
+- Replace mock tools with real integrations (order management + transactional email provider).
+- Add authentication, rate limiting, and request id tracing.
+- Persist workflow events for analytics and replay.
+- Add contract tests and CI pipeline checks.
+
+## License
+
+MIT (or your preferred license).

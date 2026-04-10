@@ -47,6 +47,39 @@ Most "agent" demos stop at prompt-to-text output. This project goes further by m
     - finds an available port
     - avoids duplicate process launches
 
+## Architectural Choices
+
+### State Management
+
+- Request-scoped state is kept minimal and explicit. Each request produces a structured output (`plan`, `steps`, and `events`) instead of mutating hidden global state.
+- In-memory state is used only for execution bookkeeping (for example, tracking completed task IDs and dependency checks during a workflow run).
+- Service-level shared state (like the LLM client) is initialized once at app startup and attached to FastAPI app state, then reused across requests for efficiency.
+- Configuration is centralized and typed via Pydantic settings, reducing runtime drift between environments.
+
+Why this choice: it keeps behavior deterministic and testable while avoiding accidental coupling between requests.
+
+### Async Task Execution Model
+
+- Tool calls are implemented as async functions and executed by an orchestrator loop that respects task dependencies.
+- The executor uses a dependency-aware queue pattern:
+  - tasks wait until prerequisites complete successfully
+  - failures short-circuit the workflow
+  - dependent tasks are skipped when upstream tasks fail
+- This preserves business invariants (for example, never sending an email if cancellation fails) while keeping I/O non-blocking.
+
+Why this choice: async I/O improves throughput under network latency, and dependency-aware scheduling makes guardrails enforceable by design.
+
+### Handling LLM Unreliability
+
+- The planner is intentionally hybrid:
+  - Primary path: LLM-generated plan for flexibility
+  - Fallback path: deterministic regex parser for baseline reliability
+- LLM transport is wrapped with bounded retries and linear backoff to tolerate transient network/model outages.
+- Responses are validated against typed schemas, and malformed model output is treated as recoverable by falling back instead of crashing the request.
+- Startup health checks surface LLM readiness issues early while still allowing the API process to remain available.
+
+Why this choice: LLMs are probabilistic and external dependencies are noisy, so reliability comes from layered fallbacks, validation, and graceful degradation.
+
 ## Tech Stack
 
 - Python 3.11+
